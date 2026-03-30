@@ -1,0 +1,4 @@
+.zig-cache
+build.zig.zon
+hello_world
+zig-out
