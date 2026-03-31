@@ -6,6 +6,13 @@ const screen_width = 640;
 const screen_height = 480;
 
 pub fn main() !void {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+
+    var env_variables = try std.process.getEnvMap(arena.allocator());
+    defer env_variables.deinit();
+    std.debug.print("{any}\n", .{env_variables});
+
     defer sdl3.shutdown();
 
     // Initialize SDL with subsystems you need here.
