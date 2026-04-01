@@ -12,6 +12,10 @@ pub fn main() !void {
     var env_variables = try std.process.getEnvMap(arena.allocator());
     defer env_variables.deinit();
     std.debug.print("{any}\n", .{env_variables});
+    std.debug.print("{any}\n", .{1});
+    if (env_variables.hash_map.get("TEST")) |test_env_variable| {
+        std.debug.print("{s}\n", .{test_env_variable});
+    }
 
     defer sdl3.shutdown();
 
