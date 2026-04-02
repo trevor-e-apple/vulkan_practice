@@ -1,8 +1,29 @@
 const std = @import("std");
 
-pub fn build(b: *std.Build) void {
+pub fn build(b: *std.Build) !void {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+
+    const cwd_buffer: [256]u8 = undefined;
+    const cwd = std.process.getCwd(cwd_buffer);
+
+    var env_variables = try std.process.getEnvMap(arena.allocator());
+    defer env_variables.deinit();
+
+    const vulkan_sdk_path = result: {
+        if (env_variables.hash_map.get("VULKAN_SDK")) |vulkan_sdk_path| {
+            std.debug.print("VULKAN_SDK: {s}\n", .{vulkan_sdk_path});
+            const relative_path = std.fs.relative(arena, cwd, vulkan_sdk_path);
+            break :result relative_path;
+        } else {
+            std.debug.print("VULKAN_SDK path not found\n", .{});
+            return;
+        }
+    };
+    const vulkan = b.dependency("vulkan", .{ .registry = b.path(vulkan_sdk_path).cwd_relative });
 
     const sdl3 = b.dependency("sdl3", .{
         .target = target,
@@ -44,6 +65,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
     });
     root_module.addImport("sdl3", sdl3.module("sdl3"));
+    root_module.addImport("vulkan", vulkan.module("vulkan-zig"));
 
     const exe = b.addExecutable(.{
         .name = "hello",
