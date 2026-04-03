@@ -27,7 +27,7 @@ pub fn build(b: *std.Build) !void {
     };
 
     const relative_to_vk_xml: []const u8 = "share/vulkan/registry/vk.xml";
-    const vk_xml_path = try std.fs.path.join(arena.allocator(), &[_][]const u8{ vulkan_sdk_path, relative_to_vk_xml });
+    const vk_xml_path = try std.fs.path.join(arena.allocator(), ([_][]const u8{ vulkan_sdk_path, relative_to_vk_xml })[0..]);
     std.debug.print("vk_xml_path: {s}", .{vk_xml_path});
     const vulkan = b.dependency("vulkan", .{ .registry = b.path(vk_xml_path) });
 
