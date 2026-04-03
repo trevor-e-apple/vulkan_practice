@@ -1,0 +1,15 @@
+.{
+    .name = .vulkan_practice,
+    .version = "0.15.2",
+    .dependencies = .{ .sdl3 = .{
+        .url = "git+https://codeberg.org/7Games/zig-sdl3?ref=v0.1.9#45ffa097ad183a72f81d42f9f8c0df0398663814",
+        .hash = "sdl3-0.1.9-NmT1Q2k0JwAtPRns9E3OO6qpqpvy8mn80guJ8L209AtI",
+    },
+    .vulkan = .{
+            .url = "git+https://github.com/Snektron/vulkan-zig#3ada9e2989bab70090a55f0f6fac19ea90d06357",
+            .hash = "vulkan-0.0.0-r7Ytx6FIAwD3QyrrJhvObO0YSZ6WEkMGSCPKbhM__HFd",
+        },
+    },
+    .paths = .{""},
+    .fingerprint = 0xb961638918419d29,
+}

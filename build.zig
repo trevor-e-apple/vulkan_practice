@@ -1,14 +1,15 @@
 const std = @import("std");
+const ArenaAllocator = std.heap.ArenaAllocator;
 
 pub fn build(b: *std.Build) !void {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    var arena = ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const cwd_buffer: [256]u8 = undefined;
-    const cwd = std.process.getCwd(cwd_buffer);
+    var cwd_buffer: [256]u8 = undefined;
+    const cwd = try std.process.getCwd(&cwd_buffer);
 
     var env_variables = try std.process.getEnvMap(arena.allocator());
     defer env_variables.deinit();
@@ -16,14 +17,19 @@ pub fn build(b: *std.Build) !void {
     const vulkan_sdk_path = result: {
         if (env_variables.hash_map.get("VULKAN_SDK")) |vulkan_sdk_path| {
             std.debug.print("VULKAN_SDK: {s}\n", .{vulkan_sdk_path});
-            const relative_path = std.fs.relative(arena, cwd, vulkan_sdk_path);
+            const relative_path = try std.fs.path.relative(arena.allocator(), cwd, vulkan_sdk_path);
+            std.debug.print("relative_path: {s}\n", .{relative_path});
             break :result relative_path;
         } else {
             std.debug.print("VULKAN_SDK path not found\n", .{});
             return;
         }
     };
-    const vulkan = b.dependency("vulkan", .{ .registry = b.path(vulkan_sdk_path).cwd_relative });
+
+    const relative_to_vk_xml: []const u8 = "share/vulkan/registry/vk.xml";
+    const vk_xml_path = try std.fs.path.join(arena.allocator(), &[_][]const u8{ vulkan_sdk_path, relative_to_vk_xml });
+    std.debug.print("vk_xml_path: {s}", .{vk_xml_path});
+    const vulkan = b.dependency("vulkan", .{ .registry = b.path(vk_xml_path) });
 
     const sdl3 = b.dependency("sdl3", .{
         .target = target,
@@ -73,4 +79,6 @@ pub fn build(b: *std.Build) !void {
     });
 
     b.installArtifact(exe);
+
+    _ = arena.reset(ArenaAllocator.ResetMode.retain_capacity);
 }
