@@ -1,5 +1,6 @@
 const sdl3 = @import("sdl3");
 const std = @import("std");
+const vk = @import("vulkan");
 
 const fps = 60;
 const screen_width = 640;
@@ -9,14 +10,6 @@ pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
-    var env_variables = try std.process.getEnvMap(arena.allocator());
-    defer env_variables.deinit();
-    std.debug.print("{any}\n", .{env_variables});
-    std.debug.print("{any}\n", .{1});
-    if (env_variables.hash_map.get("TEST")) |test_env_variable| {
-        std.debug.print("{s}\n", .{test_env_variable});
-    }
-
     defer sdl3.shutdown();
 
     // Initialize SDL with subsystems you need here.
@@ -25,8 +18,14 @@ pub fn main() !void {
     defer sdl3.quit(init_flags);
 
     // Initial window setup
-    const window = try sdl3.video.Window.init("Hello SDL3", screen_width, screen_height, .{});
+    const window = result: {
+        const flags = sdl3.video.Window.Flags{ .vulkan = true };
+        const window = try sdl3.video.Window.init("Hello SDL3", screen_width, screen_height, flags);
+        break :result window;
+    };
     defer window.deinit();
+
+    _ = try sdl3.vulkan.getInstanceExtensions();
 
     // Useful for limiting the FPS and getting the delta time
     var fps_capper = sdl3.extras.FramerateCapper(f32){ .mode = .{ .limited = fps } };
