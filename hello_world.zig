@@ -25,7 +25,25 @@ pub fn main() !void {
     };
     defer window.deinit();
 
-    _ = try sdl3.vulkan.getInstanceExtensions();
+    const vkb = vk.BaseWrapper.load(@as(vk.PfnGetInstanceProcAddr, @ptrCast(try sdl3.vulkan.getVkGetInstanceProcAddr)));
+    const instance_extensions = try sdl3.vulkan.getInstanceExtensions();
+    std.debug.print("{any}\n", .{instance_extensions});
+
+    const app_info: vk.ApplicationInfo = .{
+        .p_application_name = "Hello Triangle",
+        .application_version = @bitCast(vk.makeApiVersion(0, 1, 0, 0)),
+        .p_engine_name = "No Engine",
+        .engine_version = @bitCast(vk.makeApiVersion(0, 1, 0, 0)),
+        .api_version = @bitCast(vk.API_VERSION_1_4),
+    };
+    const create_instance_info: vk.InstanceCreateInfo = .{
+        .p_application_info = app_info,
+        .enabled_extension_count = instance_extensions.len,
+        .pp_enabled_extension_names = instance_extensions,
+    };
+
+    // // vk.PfnEnumerateInstanceExtensionProperties;
+    // const instance: vk.Instance  = vk.PfnCreateInstance;
 
     // Useful for limiting the FPS and getting the delta time
     var fps_capper = sdl3.extras.FramerateCapper(f32){ .mode = .{ .limited = fps } };
