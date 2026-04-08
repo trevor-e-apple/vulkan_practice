@@ -1,3 +1,4 @@
+const builtin = @import("builtin");
 const sdl3 = @import("sdl3");
 const std = @import("std");
 const vk = @import("vulkan");
@@ -7,7 +8,18 @@ const screen_width = 640;
 const screen_height = 480;
 
 pub fn main() !void {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    if (builtin.mode == .Debug) {
+        std.debug.print("Debug mode!", .{});
+    }
+    const parent_allocator: std.mem.Allocator = allocator: switch (builtin.mode) {
+        .Debug => {
+            var debug_allocator = std.heap.DebugAllocator(.{}).init;
+            break :allocator debug_allocator.allocator();
+        },
+        else => break :allocator std.heap.page_allocator,
+    };
+
+    var arena = std.heap.ArenaAllocator.init(parent_allocator);
     defer arena.deinit();
 
     defer sdl3.shutdown();
@@ -25,7 +37,8 @@ pub fn main() !void {
     };
     defer window.deinit();
 
-    const vkb = vk.BaseWrapper.load(@as(vk.PfnGetInstanceProcAddr, @ptrCast(try sdl3.vulkan.getVkGetInstanceProcAddr)));
+    // Vulkan setup?
+    const vkb = vk.BaseWrapper.load(@as(vk.PfnGetInstanceProcAddr, @ptrCast(try sdl3.vulkan.getVkGetInstanceProcAddr())));
     const instance_extensions = try sdl3.vulkan.getInstanceExtensions();
     std.debug.print("{any}\n", .{instance_extensions});
 
@@ -37,10 +50,11 @@ pub fn main() !void {
         .api_version = @bitCast(vk.API_VERSION_1_4),
     };
     const create_instance_info: vk.InstanceCreateInfo = .{
-        .p_application_info = app_info,
-        .enabled_extension_count = instance_extensions.len,
-        .pp_enabled_extension_names = instance_extensions,
+        .p_application_info = &app_info,
+        .enabled_extension_count = @intCast(instance_extensions.len),
+        .pp_enabled_extension_names = instance_extensions.ptr,
     };
+    _ = try vkb.createInstance(&create_instance_info, null);
 
     // // vk.PfnEnumerateInstanceExtensionProperties;
     // const instance: vk.Instance  = vk.PfnCreateInstance;
