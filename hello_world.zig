@@ -38,23 +38,47 @@ pub fn main() !void {
     defer window.deinit();
 
     // Vulkan setup?
-    const vkb = vk.BaseWrapper.load(@as(vk.PfnGetInstanceProcAddr, @ptrCast(try sdl3.vulkan.getVkGetInstanceProcAddr())));
-    const instance_extensions = try sdl3.vulkan.getInstanceExtensions();
-    std.debug.print("{any}\n", .{instance_extensions});
+    {
+        const vkb = vk.BaseWrapper.load(@as(vk.PfnGetInstanceProcAddr, @ptrCast(try sdl3.vulkan.getVkGetInstanceProcAddr())));
+        const instance_extensions = try sdl3.vulkan.getInstanceExtensions();
+        std.debug.print("{any}\n", .{instance_extensions});
 
-    const app_info: vk.ApplicationInfo = .{
-        .p_application_name = "Hello Triangle",
-        .application_version = @bitCast(vk.makeApiVersion(0, 1, 0, 0)),
-        .p_engine_name = "No Engine",
-        .engine_version = @bitCast(vk.makeApiVersion(0, 1, 0, 0)),
-        .api_version = @bitCast(vk.API_VERSION_1_4),
-    };
-    const create_instance_info: vk.InstanceCreateInfo = .{
-        .p_application_info = &app_info,
-        .enabled_extension_count = @intCast(instance_extensions.len),
-        .pp_enabled_extension_names = instance_extensions.ptr,
-    };
-    _ = try vkb.createInstance(&create_instance_info, null);
+        if (builtin.mode == .Debug) {
+            const validation_layers: []const [*:0]const u8 = &.{"VL_LAYER_KHRONOS_validation"};
+            const available_layers = try vkb.enumerateInstanceLayerPropertiesAlloc(arena.allocator());
+            for (validation_layers) |required_layer| {
+                const has_layer: bool = layer_scan: for (available_layers) |layer| {
+                    if (std.mem.startsWith(
+                        u8,
+                        &layer.layer_name,
+                        required_layer[0..(std.mem.len(required_layer) - 1)],
+                    )) {
+                        break :layer_scan true;
+                    }
+                } else {
+                    break :layer_scan false;
+                };
+                if (!has_layer) {
+                    std.debug.print("Missing required layer", .{});
+                    return;
+                }
+            }
+        }
+
+        const app_info: vk.ApplicationInfo = .{
+            .p_application_name = "Hello Triangle",
+            .application_version = @bitCast(vk.makeApiVersion(0, 1, 0, 0)),
+            .p_engine_name = "No Engine",
+            .engine_version = @bitCast(vk.makeApiVersion(0, 1, 0, 0)),
+            .api_version = @bitCast(vk.API_VERSION_1_4),
+        };
+        const create_instance_info: vk.InstanceCreateInfo = .{
+            .p_application_info = &app_info,
+            .enabled_extension_count = @intCast(instance_extensions.len),
+            .pp_enabled_extension_names = instance_extensions.ptr,
+        };
+        _ = try vkb.createInstance(&create_instance_info, null);
+    }
 
     // // vk.PfnEnumerateInstanceExtensionProperties;
     // const instance: vk.Instance  = vk.PfnCreateInstance;
@@ -80,5 +104,7 @@ pub fn main() !void {
                 .terminating => quit = true,
                 else => {},
             };
+
+        _ = arena.reset(.retain_capacity);
     }
 }
