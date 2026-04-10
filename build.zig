@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const ArenaAllocator = std.heap.ArenaAllocator;
 
 pub fn build(b: *std.Build) !void {
@@ -13,23 +14,6 @@ pub fn build(b: *std.Build) !void {
 
     var env_variables = try std.process.getEnvMap(arena.allocator());
     defer env_variables.deinit();
-
-    const vulkan_sdk_path = result: {
-        if (env_variables.hash_map.get("VULKAN_SDK")) |vulkan_sdk_path| {
-            std.debug.print("VULKAN_SDK: {s}\n", .{vulkan_sdk_path});
-            const relative_path = try std.fs.path.relative(arena.allocator(), cwd, vulkan_sdk_path);
-            std.debug.print("relative_path: {s}\n", .{relative_path});
-            break :result relative_path;
-        } else {
-            std.debug.print("VULKAN_SDK path not found\n", .{});
-            return;
-        }
-    };
-
-    const relative_to_vk_xml: []const u8 = "share/vulkan/registry/vk.xml";
-    const vk_xml_path = try std.fs.path.join(arena.allocator(), ([_][]const u8{ vulkan_sdk_path, relative_to_vk_xml })[0..]);
-    std.debug.print("vk_xml_path: {s}", .{vk_xml_path});
-    const vulkan = b.dependency("vulkan", .{ .registry = b.path(vk_xml_path) });
 
     const sdl3 = b.dependency("sdl3", .{
         .target = target,
@@ -71,7 +55,29 @@ pub fn build(b: *std.Build) !void {
         .target = target,
     });
     root_module.addImport("sdl3", sdl3.module("sdl3"));
-    root_module.addImport("vulkan", vulkan.module("vulkan-zig"));
+
+    switch (builtin.target.os.tag) {
+        .macos => {},
+        else => {
+            const vulkan_sdk_path = result: {
+                if (env_variables.hash_map.get("VULKAN_SDK")) |vulkan_sdk_path| {
+                    std.debug.print("VULKAN_SDK: {s}\n", .{vulkan_sdk_path});
+                    const relative_path = try std.fs.path.relative(arena.allocator(), cwd, vulkan_sdk_path);
+                    std.debug.print("relative_path: {s}\n", .{relative_path});
+                    break :result relative_path;
+                } else {
+                    std.debug.print("VULKAN_SDK path not found\n", .{});
+                    return;
+                }
+            };
+
+            const relative_to_vk_xml: []const u8 = "share/vulkan/registry/vk.xml";
+            const vk_xml_path = try std.fs.path.join(arena.allocator(), ([_][]const u8{ vulkan_sdk_path, relative_to_vk_xml })[0..]);
+            std.debug.print("vk_xml_path: {s}", .{vk_xml_path});
+            const vulkan = b.dependency("vulkan", .{ .registry = b.path(vk_xml_path) });
+            root_module.addImport("vulkan", vulkan.module("vulkan-zig"));
+        },
+    }
 
     const exe = b.addExecutable(.{
         .name = "hello",
